@@ -6,12 +6,11 @@ import About from './components/About';
 import Keynote from './components/Keynote';
 import Scope from './components/Scope';
 import Venue from './components/Venue';
-import Organizers from './components/Organizers';
 import Footer from './components/Footer';
 import SubmitForm from './components/SubmitForm';
 import AdminDashboard from './components/AdminDashboard';
 import Program from './components/Program';
-import { isConfigured, refreshSupabaseClient, supabase, clearSupabaseSession, isSecretKey } from './lib/supabase';
+import { isConfigured, refreshSupabaseClient, supabase, isSecretKey } from './lib/supabase';
 
 type Page = 'home' | 'submit' | 'admin' | 'program';
 
@@ -38,15 +37,12 @@ const SetupWizard = ({ onConnected }: { onConnected: () => void }) => {
         throw new Error("Invalid format. Please use the public key (starts with sb_publishable_).");
       }
 
-      // Quick probe to verify the key works for this project
       const { error } = await supabase.from('submissions').select('id').limit(1);
       
       if (error) {
-        // Handle common auth errors
         if (error.code === 'PGRST301' || error.message.toLowerCase().includes('jwt') || error.message.toLowerCase().includes('forbidden')) {
           throw new Error("Access Denied. This key is not authorized for the research alliance project.");
         }
-        // If the table doesn't exist, it's still a "success" in terms of connection
         if (error.code === '42P01') {
           setStatus('success');
           setTimeout(onConnected, 1000);
@@ -205,7 +201,6 @@ const App: React.FC = () => {
                 </div>
               </div>
               <Scope />
-              <Organizers />
               <Venue />
             </div>
           </div>
