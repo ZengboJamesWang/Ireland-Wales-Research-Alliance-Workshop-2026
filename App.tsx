@@ -36,7 +36,7 @@ const SetupWizard = () => (
               Option A: Vercel Dashboard
             </p>
             <p className="text-slate-500 text-sm">
-              Add <code>SUPABASE_ANON_KEY</code> to <b>Settings > Environment Variables</b> in Vercel, then redeploy.
+              Add <code>SUPABASE_ANON_KEY</code> to <b>Settings &gt; Environment Variables</b> in Vercel, then redeploy.
             </p>
           </div>
           
