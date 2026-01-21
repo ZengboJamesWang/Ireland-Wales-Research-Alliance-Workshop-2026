@@ -1,10 +1,32 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://raeturpbgqmamdtsnuph.supabase.co';
-const supabaseAnonKey = 'sb_publishable_3JZYy4tdhJBf1qd_xtU2Ig_8_qGnEDn';
+/**
+ * SUPABASE CONFIGURATION
+ * Connected to project: raeturpbgqmamdtsnuph
+ */
 
-// We use the publishable (anon) key for browser-side requests.
-// Ensure RLS (Row Level Security) is enabled on your 'submissions' table 
-// and that 'Insert' permissions are granted to the 'anon' role.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const getEnv = (key: string) => {
+  return (window as any).process?.env?.[key] || '';
+};
+
+const supabaseUrl = getEnv('SUPABASE_URL') || 'https://raeturpbgqmamdtsnuph.supabase.co';
+const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
+
+// Check if a valid key exists (user provided sb_publishable... in index.html)
+export const isConfigured = 
+  !!supabaseAnonKey && 
+  supabaseAnonKey.length > 20 && 
+  supabaseAnonKey !== 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE';
+
+// Create client
+export const supabase = isConfigured 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : (null as any); 
+
+export const getSupabase = () => {
+  if (!supabase) {
+    throw new Error("Supabase client not initialized. Please verify the key in index.html");
+  }
+  return supabase;
+};
