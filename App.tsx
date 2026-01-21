@@ -6,6 +6,7 @@ import About from './components/About';
 import Keynote from './components/Keynote';
 import Scope from './components/Scope';
 import Venue from './components/Venue';
+import Organizers from './components/Organizers';
 import Footer from './components/Footer';
 import SubmitForm from './components/SubmitForm';
 import AdminDashboard from './components/AdminDashboard';
@@ -86,7 +87,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col selection:bg-emerald-500/30">
+    <div className="min-h-screen flex flex-col selection:bg-emerald-500/30 text-slate-200">
       <Navbar 
         currentPage={currentPage === 'admin' ? 'submit' : currentPage} 
         onNavigate={(p) => handleNavigate(p as Page)} 
@@ -129,6 +130,7 @@ const App: React.FC = () => {
               </div>
 
               <Scope />
+              <Organizers />
               <Venue />
             </div>
           </div>
