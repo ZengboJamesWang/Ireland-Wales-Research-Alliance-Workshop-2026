@@ -2,8 +2,8 @@
 import React from 'react';
 
 interface NavbarProps {
-  currentPage: 'home' | 'submit';
-  onNavigate: (page: 'home' | 'submit') => void;
+  currentPage: string;
+  onNavigate: (page: any) => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
@@ -25,7 +25,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
               onClick={() => onNavigate('home')}
               className={`text-sm font-medium transition-colors hover:text-emerald-400 ${currentPage === 'home' ? 'text-emerald-400' : 'text-slate-300'}`}
             >
-              Workshop Info
+              Overview
+            </button>
+            <button 
+              onClick={() => onNavigate('program')}
+              className={`text-sm font-medium transition-colors hover:text-emerald-400 ${currentPage === 'program' ? 'text-emerald-400' : 'text-slate-300'}`}
+            >
+              Program & Resources
             </button>
             <button 
               onClick={() => onNavigate('submit')}

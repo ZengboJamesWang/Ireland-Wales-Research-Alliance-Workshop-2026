@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isConfigured } from '../lib/supabase';
 
 interface SubmissionRecord {
   id: number;
@@ -107,7 +107,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4">
         <div className="max-w-md w-full bg-slate-900 border border-white/10 p-10 rounded-[2.5rem] shadow-2xl text-center">
           <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-emerald-500">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,6 +121,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
             <button type="submit" className="w-full py-4 bg-emerald-500 text-slate-950 rounded-xl font-black hover:bg-emerald-400 transition-all">UNLOCK DASHBOARD</button>
           </form>
           <button onClick={onBackHome} className="mt-6 text-slate-600 text-xs font-bold hover:text-slate-400 uppercase tracking-widest transition-colors">Return to Public Site</button>
+        </div>
+        
+        <div className="mt-8 flex items-center space-x-3 bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
+            <div className={`w-2 h-2 rounded-full ${isConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                Connection: <span className={isConfigured ? 'text-emerald-400' : 'text-red-400'}>{isConfigured ? 'ACTIVE' : 'KEY REQUIRED'}</span>
+            </p>
         </div>
       </div>
     );
@@ -145,6 +152,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
 
       {view === 'records' ? (
         <div className="animate-in fade-in duration-500">
+          {error && (
+             <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm">
+                <p className="font-bold mb-1 uppercase tracking-widest text-xs">Error Loading Records</p>
+                <p>{error}</p>
+                <p className="mt-2 text-red-300/60">Check the Tech Guide tab to ensure your database is set up correctly.</p>
+             </div>
+          )}
+          
           <div className="grid md:grid-cols-4 gap-4 mb-8">
             <div className="md:col-span-2 relative group">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -182,21 +197,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
           <div className="p-8 bg-slate-900 border border-white/10 rounded-[2.5rem]">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
               <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center mr-3 text-sm">1</span>
-              Why the page didn't load initially?
+              Fixing "Invalid API Key" Errors
             </h3>
             <p className="text-slate-400 mb-6 leading-relaxed">
-              The application requires a connection to a <b>Supabase Database</b> to store workshop registrations. Initially, the "Anon API Key" was empty. We have now hardcoded your project credentials into <code>index.html</code>, which allows the app to communicate with your database server.
+              If the form shows an "Invalid API key" error, the <code>SUPABASE_ANON_KEY</code> in <code>index.html</code> is likely not the real public key for your project.
+              <br/><br/>
+              To find the correct key:
+              <ol className="list-decimal list-inside mt-4 space-y-3 bg-white/5 p-6 rounded-2xl border border-white/5">
+                <li>Go to your <b>Supabase Dashboard</b></li>
+                <li>Select your project (raeturpbgqmamdtsnuph)</li>
+                <li>Click <b>Settings</b> (bottom-left gear icon)</li>
+                <li>Click <b>API</b> in the sidebar</li>
+                <li>Find <b>Project API keys</b> and copy the <b>anon (public)</b> key</li>
+                <li>The key should be very long and start with <code>eyJ...</code></li>
+              </ol>
             </p>
             
             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
               <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center mr-3 text-sm">2</span>
-              What information was needed?
+              Database Schema Checklist
             </h3>
             <p className="text-slate-400 mb-6">
-              To make the registration functional, you must ensure a table named <code>submissions</code> exists in your Supabase project. Use the SQL below in your <b>Supabase SQL Editor</b> to set it up:
+              Ensure you have executed this SQL in your <b>Supabase SQL Editor</b> to enable data storage:
             </p>
             
-            <div className="bg-slate-950 p-6 rounded-2xl border border-white/5 font-mono text-xs text-emerald-400 overflow-x-auto">
+            <div className="bg-slate-950 p-6 rounded-2xl border border-white/5 font-mono text-xs text-emerald-400 overflow-x-auto relative group">
+              <button onClick={() => {
+                navigator.clipboard.writeText(`CREATE TABLE submissions (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  institution TEXT NOT NULL,
+  is_presenting BOOLEAN DEFAULT FALSE,
+  presentation_type TEXT,
+  title TEXT,
+  abstract TEXT
+);
+ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public insert" ON submissions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select" ON submissions FOR SELECT USING (true);`);
+              }} className="absolute top-4 right-4 bg-emerald-500 text-slate-950 px-3 py-1 rounded text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">COPY SQL</button>
               <pre>{`CREATE TABLE submissions (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT NOW(),

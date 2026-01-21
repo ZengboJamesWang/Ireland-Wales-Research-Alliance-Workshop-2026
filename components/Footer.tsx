@@ -1,11 +1,15 @@
 
 import React from 'react';
+import { isConfigured, clearSupabaseSession } from '../lib/supabase';
 
 interface FooterProps {
   onAdminClick?: () => void;
 }
 
 const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
+  const connected = isConfigured();
+  const isUsingSession = !!sessionStorage.getItem('SUPABASE_SESSION_KEY');
+
   return (
     <footer className="bg-slate-950 border-t border-white/10 pt-16 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,6 +22,21 @@ const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
               Collaborative workshop fostering Ireland–Wales research links in nanomedicine and translational photonics.
             </p>
+            
+            <div className="mt-8 flex items-center space-x-3 bg-white/5 border border-white/5 rounded-2xl px-4 py-2 w-fit">
+              <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`}></div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                {connected ? (isUsingSession ? 'Session Active' : 'Connected') : 'No Database'}
+              </span>
+              {isUsingSession && (
+                <button 
+                  onClick={clearSupabaseSession}
+                  className="text-[9px] text-slate-600 hover:text-red-400 transition-colors uppercase font-bold border-l border-white/10 pl-3"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
           
           <div>

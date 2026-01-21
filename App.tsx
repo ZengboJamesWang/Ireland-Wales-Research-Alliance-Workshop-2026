@@ -10,75 +10,162 @@ import Organizers from './components/Organizers';
 import Footer from './components/Footer';
 import SubmitForm from './components/SubmitForm';
 import AdminDashboard from './components/AdminDashboard';
-import { isConfigured } from './lib/supabase';
+import Program from './components/Program';
+import { isConfigured, refreshSupabaseClient, supabase, clearSupabaseSession, isSecretKey } from './lib/supabase';
 
-type Page = 'home' | 'submit' | 'admin';
+type Page = 'home' | 'submit' | 'admin' | 'program';
 
-const SetupWizard = () => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 selection:bg-emerald-500/30">
-    <div className="max-w-2xl w-full card-glass rounded-[3rem] p-10 md:p-16 border border-emerald-500/20 relative overflow-hidden shadow-2xl">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px]"></div>
-      <div className="relative z-10">
-        <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-8 text-emerald-500">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <h1 className="text-4xl font-black text-white mb-4 tracking-tight">Connect Database</h1>
-        <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-          The application is live but the <b>Supabase Anon Key</b> is missing. Please add it to see the workshop content.
-        </p>
+const SetupWizard = ({ onConnected }: { onConnected: () => void }) => {
+  const [sessionKey, setSessionKey] = useState('');
+  const [status, setStatus] = useState<'idle' | 'testing' | 'error' | 'forbidden' | 'success'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleTestConnection = async () => {
+    const trimmedKey = sessionKey.trim();
+    if (!trimmedKey) return;
+    
+    if (isSecretKey(trimmedKey)) {
+      setStatus('forbidden');
+      return;
+    }
+
+    setStatus('testing');
+    setErrorMessage('');
+
+    try {
+      const refreshed = refreshSupabaseClient(trimmedKey, true);
+      if (!refreshed) {
+        throw new Error("Invalid format. Please use the public key (starts with sb_publishable_).");
+      }
+
+      // Quick probe to verify the key works for this project
+      const { error } = await supabase.from('submissions').select('id').limit(1);
+      
+      if (error) {
+        // Handle common auth errors
+        if (error.code === 'PGRST301' || error.message.toLowerCase().includes('jwt') || error.message.toLowerCase().includes('forbidden')) {
+          throw new Error("Access Denied. This key is not authorized for the research alliance project.");
+        }
+        // If the table doesn't exist, it's still a "success" in terms of connection
+        if (error.code === '42P01') {
+          setStatus('success');
+          setTimeout(onConnected, 1000);
+          return;
+        }
+        throw error;
+      }
+
+      setStatus('success');
+      setTimeout(onConnected, 1000);
+    } catch (err: any) {
+      if (err.message === 'FORBIDDEN_SECRET_KEY') {
+        setStatus('forbidden');
+      } else {
+        setStatus('error');
+        setErrorMessage(err.message || "Connection failed. Please check your key.");
+        sessionStorage.removeItem('SUPABASE_SESSION_KEY');
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 selection:bg-emerald-500/30">
+      <div className="max-w-2xl w-full card-glass rounded-[3rem] p-10 md:p-16 border border-emerald-500/20 relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px]"></div>
         
-        <div className="space-y-4">
-          <div className="p-6 bg-white/5 rounded-2xl border border-white/10 hover:border-white/20 transition-all group">
-            <p className="text-white font-bold mb-1 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-              Option A: Vercel Dashboard
-            </p>
-            <p className="text-slate-500 text-sm">
-              Add <code>SUPABASE_ANON_KEY</code> to <b>Settings &gt; Environment Variables</b> in Vercel, then redeploy.
+        <div className="relative z-10">
+          <div className="text-center mb-10">
+            <div className={`w-20 h-20 rounded-[2.2rem] flex items-center justify-center mx-auto mb-8 transition-all duration-500 shadow-2xl ${
+              status === 'forbidden' ? 'bg-red-500/20 text-red-500 shadow-red-500/10' : 
+              status === 'success' ? 'bg-emerald-500/20 text-emerald-500 shadow-emerald-500/10' :
+              'bg-emerald-500/10 text-emerald-500 shadow-emerald-500/5'
+            }`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            
+            <h1 className="text-4xl font-black text-white mb-4 tracking-tight">Database Login</h1>
+            <p className="text-slate-400 text-lg leading-relaxed">
+              {status === 'forbidden' 
+                ? "Restricted: Please use your project's 'Publishable' key." 
+                : "Paste your Supabase Publishable Key to access the workshop platform."}
             </p>
           </div>
           
-          <div className="p-6 bg-white/5 rounded-2xl border border-white/10 hover:border-white/20 transition-all">
-            <p className="text-white font-bold mb-1 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-cyan-500 mr-2"></span>
-              Option B: Hardcode in HTML
-            </p>
-            <p className="text-slate-500 text-sm">
-              Paste your key directly into <code>index.html</code> inside the <code>SUPABASE_ANON_KEY</code> field.
-            </p>
-          </div>
-        </div>
+          <div className="space-y-6">
+            <div className="group">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 group-focus-within:text-emerald-500 transition-colors">
+                Supabase Publishable Key (New Format)
+              </label>
+              <input 
+                type="text"
+                value={sessionKey}
+                onChange={(e) => {
+                  setSessionKey(e.target.value);
+                  if (status !== 'idle') setStatus('idle');
+                }}
+                placeholder="sb_publishable_..."
+                className={`w-full bg-slate-900 border ${status === 'error' || status === 'forbidden' ? 'border-red-500/50' : 'border-white/10'} rounded-2xl p-5 text-white focus:border-emerald-500 outline-none transition-all shadow-inner font-mono text-sm`}
+                autoFocus
+              />
+              
+              {errorMessage && (
+                <p className="mt-3 text-red-400 text-xs font-medium bg-red-500/5 p-3 rounded-lg border border-red-500/10">
+                  {errorMessage}
+                </p>
+              )}
 
-        <div className="mt-10 pt-8 border-t border-white/5 flex items-center justify-between">
-          <div>
-            <p className="text-slate-600 text-[10px] uppercase font-black tracking-widest">Project Reference</p>
-            <p className="text-slate-400 font-mono text-xs">raeturpbgqmamdtsnuph</p>
+              {status === 'forbidden' && (
+                <div className="mt-6 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-200 text-sm">
+                  <p className="font-bold mb-2 uppercase tracking-widest text-[10px]">Important Security Note:</p>
+                  <p className="opacity-80">The <code>sb_secret</code> key provides full database control and cannot be used in browsers. Please use the <b>Publishable</b> key from your Supabase Dashboard.</p>
+                </div>
+              )}
+            </div>
+
+            <button 
+              onClick={handleTestConnection}
+              disabled={!sessionKey || status === 'testing' || status === 'success'}
+              className={`w-full py-5 rounded-2xl font-black text-lg transition-all active:scale-95 disabled:opacity-50 ${
+                status === 'forbidden' ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
+              }`}
+            >
+              {status === 'testing' ? 'AUTHORIZING...' : status === 'success' ? 'CONNECTED' : 'VERIFY & ENTER'}
+            </button>
           </div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-          >
-            Check Connection
-          </button>
+
+          <div className="mt-12 pt-8 border-t border-white/5 flex items-center justify-between text-[10px] font-black tracking-widest uppercase">
+            <div>
+              <p className="text-slate-600 mb-1">Workshop Instance</p>
+              <p className="text-slate-400 font-mono text-xs lowercase">raeturpbgqmamdtsnuph</p>
+            </div>
+            <a 
+              href="https://supabase.com/dashboard/project/raeturpbgqmamdtsnuph/settings/api" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-emerald-500 hover:text-emerald-400 transition-colors"
+            >
+              Get Publishable Key →
+            </a>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isPresentingPreference, setIsPresentingPreference] = useState(false);
+  const [isReady, setIsReady] = useState(isConfigured());
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  // If Supabase is not configured, show the setup instructions
-  if (!isConfigured) {
-    return <SetupWizard />;
+  if (!isReady) {
+    return <SetupWizard onConnected={() => setIsReady(true)} />;
   }
 
   const handleNavigate = (page: Page, isPresenting: boolean = false) => {
@@ -89,7 +176,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col selection:bg-emerald-500/30 text-slate-200">
       <Navbar 
-        currentPage={currentPage === 'admin' ? 'submit' : currentPage} 
+        currentPage={currentPage} 
         onNavigate={(p) => handleNavigate(p as Page)} 
       />
       
@@ -100,39 +187,33 @@ const App: React.FC = () => {
             <div className="relative">
               <About />
               <Keynote />
-              
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-16">
-                <div className="p-8 md:p-12 card-glass rounded-[2.5rem] border border-white/5 overflow-hidden relative text-center md:text-left">
-                   <div className="relative z-10 grid md:grid-cols-3 gap-12">
-                      <div className="md:col-span-2">
-                        <h2 className="text-3xl font-bold mb-6 text-white">Workshop Format</h2>
-                        <ul className="space-y-4 text-slate-300">
-                          <li>• Keynote presentation from Prof. Silvia Giordani (DCU)</li>
-                          <li>• Invited talks from the Ireland–Wales collaboration teams</li>
-                          <li>• Contributed oral and poster sessions</li>
-                          <li>• Networking and discussion on funding opportunities</li>
-                        </ul>
-                      </div>
-                      <div className="flex flex-col justify-center space-y-4 p-6 bg-white/5 rounded-3xl border border-white/10">
-                         <div className="text-center">
-                            <p className="text-2xl font-bold text-white">Free Attendance</p>
-                            <p className="text-slate-500 text-xs mt-1">Advance registration required</p>
-                         </div>
-                         <button 
-                            onClick={() => handleNavigate('submit', false)} 
-                            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all"
-                         >
-                            Register Now
-                         </button>
-                      </div>
-                   </div>
+                <div className="p-8 md:p-12 card-glass rounded-[3rem] border border-white/5 overflow-hidden relative flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+                    <div>
+                      <h2 className="text-3xl font-bold text-white mb-4">Workshop Materials</h2>
+                      <p className="text-slate-400 max-w-md">Access the workshop paper, submission templates, and the technical brochure for the 2026 alliance event.</p>
+                    </div>
+                    <button 
+                      onClick={() => handleNavigate('program')}
+                      className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl font-black transition-all flex items-center group mx-auto md:mx-0"
+                    >
+                      <span>BROWSE PAPERS</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </button>
                 </div>
               </div>
-
               <Scope />
               <Organizers />
               <Venue />
             </div>
+          </div>
+        )}
+
+        {currentPage === 'program' && (
+          <div className="pt-24 animate-in slide-in-from-right-4 duration-500">
+            <Program />
           </div>
         )}
 

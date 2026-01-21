@@ -31,13 +31,16 @@
 </script>
 <script>
   /**
-   * ENVIRONMENT CONFIGURATION
-   * These values allow the application to connect to your Supabase project.
+   * SUPABASE CONFIGURATION
+   * We initialize window.process to support environment variables.
+   * On Vercel, these are injected automatically if you set them in the dashboard.
    */
   window.process = { 
     env: { 
       SUPABASE_URL: "https://raeturpbgqmamdtsnuph.supabase.co", 
-      SUPABASE_ANON_KEY: "sb_publishable_3JZYy4tdhJBf1qd_xtU2lg_8_qGnEDn" 
+      // Replace the string below with your REAL 'anon' key from Supabase Settings > API
+      // Or better: Set 'SUPABASE_ANON_KEY' in your Vercel Project Settings
+      SUPABASE_ANON_KEY: "" 
     } 
   };
 </script>
