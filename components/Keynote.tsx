@@ -3,9 +3,8 @@ import React from 'react';
 import Section from './Section';
 
 const Keynote: React.FC = () => {
-  // Using the Google Drive image provided by the user (ID: 1axgePyCsgkP0P2uZUh-dkrISrDDYVwfh)
-  // The thumbnail endpoint is generally more reliable for direct embedding in web apps.
-  const imageSource = "https://drive.google.com/thumbnail?id=1axgePyCsgkP0P2uZUh-dkrISrDDYVwfh&sz=w1000";
+  // Updated image ID as requested by the user
+  const imageSource = "https://drive.google.com/thumbnail?id=1rYVU2yoGi-vgEQmXG3oQB6NGgvAiFBGk&sz=w1000";
 
   return (
     <Section className="py-20">
