@@ -30,6 +30,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const ADMIN_PASSWORD = 'admin2026';
 
@@ -66,6 +67,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
       setError(err.message || "Failed to query database. Table 'submissions' may be missing.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this submission? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsDeleting(id);
+    try {
+      const { error: deleteError } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+
+      // Update local state to remove the deleted record
+      setSubmissions(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) {
+      console.error("Deletion Error:", err);
+      alert("Failed to delete record: " + err.message + "\n\nTip: Ensure you have added the 'DELETE' policy in your Supabase SQL editor (see Tech Guide tab).");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -173,7 +198,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
             <div className="flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 p-4"><div className="text-center"><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total</p><p className="text-xl font-black text-white">{submissions.length}</p></div></div>
           </div>
 
-          <div className="bg-slate-900/50 border border-white/10 rounded-[2.5rem] overflow-hidden">
+          <div className="bg-slate-900/50 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
             {loading ? (
               <div className="py-32 flex flex-col items-center justify-center"><div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4"></div><p className="text-slate-500 text-xs uppercase tracking-widest font-bold">Connecting...</p></div>
             ) : filteredSubmissions.length === 0 ? (
@@ -181,10 +206,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead><tr className="border-b border-white/5 bg-white/5"><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Participant</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Institution</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Role</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Submission</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Date</th></tr></thead>
+                  <thead><tr className="border-b border-white/5 bg-white/5"><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Participant</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Institution</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Role</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Submission</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Date</th><th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Actions</th></tr></thead>
                   <tbody className="divide-y divide-white/5">
                     {filteredSubmissions.map((s) => (
-                      <tr key={s.id} className="hover:bg-white/[0.02] transition-colors"><td className="px-8 py-6"><p className="text-white font-bold">{s.first_name} {s.last_name}</p><p className="text-slate-500 text-xs">{s.email}</p></td><td className="px-8 py-6 text-slate-300 text-sm">{s.institution}</td><td className="px-8 py-6">{s.is_presenting ? <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black rounded-lg border border-emerald-500/20 uppercase tracking-wider">AUTHOR</span> : <span className="px-3 py-1 bg-slate-800 text-slate-500 text-[10px] font-black rounded-lg uppercase tracking-wider">GUEST</span>}</td><td className="px-8 py-6 max-w-sm">{s.is_presenting ? <details className="cursor-pointer group/details"><summary className="text-sm text-emerald-400 font-bold list-none hover:text-emerald-300 transition-colors">READ ABSTRACT</summary><div className="mt-4 p-5 bg-slate-950 rounded-2xl border border-white/10 text-xs text-slate-400 leading-relaxed shadow-xl"><p className="text-white font-black text-sm mb-3 border-b border-white/5 pb-2">{s.title}</p><p className="whitespace-pre-wrap">{s.abstract}</p></div></details> : <span className="text-slate-700 italic text-xs">N/A</span>}</td><td className="px-8 py-6 text-right text-slate-600 text-[10px] font-black uppercase">{new Date(s.created_at).toLocaleDateString('en-GB')}</td></tr>
+                      <tr key={s.id} className="hover:bg-white/[0.02] transition-colors"><td className="px-8 py-6"><p className="text-white font-bold">{s.first_name} {s.last_name}</p><p className="text-slate-500 text-xs">{s.email}</p></td><td className="px-8 py-6 text-slate-300 text-sm">{s.institution}</td><td className="px-8 py-6">{s.is_presenting ? <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black rounded-lg border border-emerald-500/20 uppercase tracking-wider">AUTHOR</span> : <span className="px-3 py-1 bg-slate-800 text-slate-500 text-[10px] font-black rounded-lg uppercase tracking-wider">GUEST</span>}</td><td className="px-8 py-6 max-w-sm">{s.is_presenting ? <details className="cursor-pointer group/details"><summary className="text-sm text-emerald-400 font-bold list-none hover:text-emerald-300 transition-colors">READ ABSTRACT</summary><div className="mt-4 p-5 bg-slate-950 rounded-2xl border border-white/10 text-xs text-slate-400 leading-relaxed shadow-xl"><p className="text-white font-black text-sm mb-3 border-b border-white/5 pb-2">{s.title}</p><p className="whitespace-pre-wrap">{s.abstract}</p></div></details> : <span className="text-slate-700 italic text-xs">N/A</span>}</td><td className="px-8 py-6 text-right text-slate-600 text-[10px] font-black uppercase">{new Date(s.created_at).toLocaleDateString('en-GB')}</td><td className="px-8 py-6 text-center"><button onClick={() => handleDelete(s.id)} disabled={isDeleting === s.id} className={`p-2 rounded-lg transition-all ${isDeleting === s.id ? 'text-slate-700' : 'text-slate-500 hover:text-red-400 hover:bg-red-500/10'}`} title="Delete Submission">{isDeleting === s.id ? <svg className="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>}</button></td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -215,10 +240,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
             
             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
               <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center mr-3 text-sm">2</span>
-              Database Schema Checklist
+              Database Schema & Policies
             </h3>
             <p className="text-slate-400 mb-6">
-              Ensure you have executed this SQL in your <b>Supabase SQL Editor</b> to enable data storage:
+              Ensure you have executed this SQL in your <b>Supabase SQL Editor</b> to enable data storage and deletion:
             </p>
             
             <div className="bg-slate-950 p-6 rounded-2xl border border-white/5 font-mono text-xs text-emerald-400 overflow-x-auto relative group">
@@ -235,9 +260,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackHome }) => {
   title TEXT,
   abstract TEXT
 );
+
+-- Enable RLS and allow public access
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public insert" ON submissions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public select" ON submissions FOR SELECT USING (true);`);
+CREATE POLICY "Allow public select" ON submissions FOR SELECT USING (true);
+CREATE POLICY "Allow public delete" ON submissions FOR DELETE USING (true);`);
               }} className="absolute top-4 right-4 bg-emerald-500 text-slate-950 px-3 py-1 rounded text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">COPY SQL</button>
               <pre>{`CREATE TABLE submissions (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -252,10 +280,11 @@ CREATE POLICY "Allow public select" ON submissions FOR SELECT USING (true);`);
   abstract TEXT
 );
 
--- Enable RLS and allow public insertions
+-- Enable RLS and allow public access
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public insert" ON submissions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public select" ON submissions FOR SELECT USING (true);`}</pre>
+CREATE POLICY "Allow public select" ON submissions FOR SELECT USING (true);
+CREATE POLICY "Allow public delete" ON submissions FOR DELETE USING (true);`}</pre>
             </div>
           </div>
         </div>
